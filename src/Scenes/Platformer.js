@@ -24,6 +24,10 @@ class Platformer extends Phaser.Scene {
         // Second parameter: key for the tilesheet (from this.load.image in Load.js)
         this.tileset = this.map.addTilesetImage("kenny_tilemap_packed", "tilemap_tiles");
 
+        // Set the background color
+        const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
+        if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
+
         // Create a layer
         this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
 
