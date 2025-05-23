@@ -1,4 +1,5 @@
-{ "compressionlevel":-1,
+{ "backgroundcolor":"#5cd6fb",
+ "compressionlevel":-1,
  "height":25,
  "infinite":false,
  "layers":[
@@ -145,7 +146,7 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":4,
+ "nextlayerid":5,
  "nextobjectid":55,
  "orientation":"orthogonal",
  "renderorder":"right-down",
