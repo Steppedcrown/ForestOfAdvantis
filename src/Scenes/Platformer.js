@@ -1,6 +1,6 @@
 class Platformer extends Phaser.Scene {
     constructor() {
-        super("platformerScene");
+        super("level1");
     }
 
     init() {
@@ -12,6 +12,8 @@ class Platformer extends Phaser.Scene {
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
         this.score = 0;
+        this.isGameOver = false;
+        this.spawnPoint = [10, 240];
     }
 
     create() {
@@ -78,13 +80,49 @@ class Platformer extends Phaser.Scene {
         
 
         // set up player avatar
-        this.spawnPoint = [10, 240];
         my.sprite.player = this.physics.add.sprite(this.spawnPoint[0], this.spawnPoint[1], "platformer_characters", "tile_0000.png");
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setCollideWorldBounds(true);
 
         // Enable collision handling
         this.physics.add.collider(my.sprite.player, this.groundLayer);
+
+        // Add camera
+        this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+        this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25); // (target, [,roundPixels][,lerpX][,lerpY])
+        this.cameras.main.setDeadzone(50, 50);
+        this.cameras.main.setZoom(this.SCALE);
+
+        // Restart game button
+        // Create a semi-transparent overlay
+        this.buttonRect = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, 200, 50, 0x000000, 0.5);
+        this.buttonRect.setOrigin(0.5, 0.5);
+        this.buttonRect.setScrollFactor(0); // Make it not scroll with the camera
+        this.buttonRect.setVisible(false); // Hide the rectangle initially
+
+        // Display "Game Over" text
+        this.gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, "Game over", {
+            fontSize: "32px",
+            color: "#ffffff"
+        }).setOrigin(0.5);
+        this.gameOverText.setVisible(false); // Hide the text initially
+        this.gameOverText.setScrollFactor(0); // Make it not scroll with the camera
+
+        // Restart button
+        this.restartButton = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, "Play Again", {
+            fontSize: "24px",
+            backgroundColor: "#ffffff",
+            color: "#000000",
+            padding: { x: 20, y: 10 } // Add padding around the text
+        })
+        .setInteractive()
+        .on('pointerdown', () => {
+            this.restartGame();
+        });
+        this.restartButton.setOrigin(0.5, 0.5);
+        this.restartButton.setScrollFactor(0); // Make it not scroll with the camera
+        this.restartButton.setVisible(false); // Hide the button initially
+        this.restartButton.setInteractive(false); // Disable interaction initially
 
         // TODO: Add coin collision handler
         // Handle collision detection with coins
@@ -99,14 +137,28 @@ class Platformer extends Phaser.Scene {
             console.log("Score: " + this.score);
         });
         this.physics.add.overlap(my.sprite.player, this.endFlag, (obj1, obj2) => {
-            console.log("You win!");
+            if (!this.isGameOver) {
+                this.isGameOver = true; // prevent multiple triggers
+                console.log("You reached the end! Final Score: " + this.score);
+                this.gameOver("You win!");
+
+            }
         });
+
+        // Save player score
+        let playerScore = this.registry.get('playerScore') || 0;
+        this.registry.set('playerScore', playerScore);
         
+        // Add score text
+        this.displayScore = this.add.bitmapText(this.game.config.width - 175, this.game.config.height - 50, 'myFont', 'Score: ' + this.registry.get('playerScore'), 32);
+        this.displayScore.setScrollFactor(0); // Make it not scroll with the camera
+
+        // Add high score text
+        this.displayHighScore = this.add.bitmapText(this.game.config.width - 175, this.game.config.height - 100, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), 32);
+        this.displayHighScore.setScrollFactor(0); // Make it not scroll with the camera
 
         // set up Phaser-provided cursor key input
         cursors = this.input.keyboard.createCursorKeys();
-
-        this.rKey = this.input.keyboard.addKey('R');
         this.dKey = this.input.keyboard.addKey('D');
         this.aKey = this.input.keyboard.addKey('A');
         this.spaceKey = this.input.keyboard.addKey('SPACE');
@@ -132,18 +184,6 @@ class Platformer extends Phaser.Scene {
         });
 
         my.vfx.walking.stop();
-        
-
-        // TODO: add camera code here
-        this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-        this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25); // (target, [,roundPixels][,lerpX][,lerpY])
-        this.cameras.main.setDeadzone(50, 50);
-        this.cameras.main.setZoom(this.SCALE);
-
-        // Add scene pauser
-        this.input.keyboard.on('keydown-ESC', () => {
-            this.scene.pause("platformerScene");
-        }, this);
     }
 
     update() {
@@ -188,9 +228,27 @@ class Platformer extends Phaser.Scene {
         if(my.sprite.player.body.blocked.down && (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
         }
+    }
 
-        if(Phaser.Input.Keyboard.JustDown(this.rKey)) {
-            this.scene.restart();
-        }
+    gameOver(text="Game Over") {
+        this.buttonRect.setVisible(true); // Show the overlay
+
+        this.gameOverText.setText(text); // Set the text
+        this.gameOverText.setVisible(true); // Show the text
+
+        this.restartButton.setVisible(true); // Show the button
+        this.restartButton.setInteractive(true); // Enable interaction
+    }
+
+    restartGame() {
+        this.buttonRect.setVisible(false); // Hide the overlay
+        
+        this.gameOverText.setVisible(false); // Hide the text
+
+        this.restartButton.setVisible(false); // Hide the button
+        this.restartButton.setInteractive(false); // Disable interaction
+
+        this.scene.stop("level1");
+        this.scene.start("level1");
     }
 }

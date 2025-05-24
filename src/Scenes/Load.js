@@ -19,6 +19,9 @@ class Load extends Phaser.Scene {
             frameHeight: 18
         });
 
+        // Font
+        this.load.bitmapFont('myFont', 'myFont.png', 'myFont.xml');
+
         // Oooh, fancy. A multi atlas is a texture atlas which has the textures spread
         // across multiple png files, so as to keep their size small for use with
         // lower resource devices (like mobile phones).
@@ -60,7 +63,7 @@ class Load extends Phaser.Scene {
         });
 
          // ...and pass to the next Scene
-         this.scene.start("platformerScene");
+         this.scene.start("level1");
     }
 
     // Never get here since a new scene is started in create()
