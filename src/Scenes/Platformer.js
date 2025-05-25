@@ -36,9 +36,14 @@ class Platformer extends Phaser.Scene {
         if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
         // Create layers
+        this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
         this.undergroundLayer = this.map.createLayer("Underground", this.tileset, 0, 0);
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
-        this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
+
+        // Order the layers
+        this.groundLayer.setDepth(-1);
+        this.undergroundLayer.setDepth(-3);
+        this.detailLayer.setDepth(-2);
 
         // Make it collidable
         this.groundLayer.setCollisionByProperty({
@@ -50,6 +55,7 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
+        my.sprite.player.setDepth(10);
 
         // Bounds
         this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
