@@ -87,7 +87,6 @@ class Platformer extends Phaser.Scene {
         this.cameras.main.setZoom(this.SCALE);
         // Set the background color
         const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
-        console.log("Background color: ", bgColor);
         if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
         this.addButtons();
@@ -138,6 +137,19 @@ class Platformer extends Phaser.Scene {
         });
         my.vfx.landing.setDepth(2); // Ensure it appears above the player
         my.vfx.landing.stop();
+
+        // collect vfx
+        my.vfx.collect = this.add.particles(0, 0, "kenny-particles", {
+            frame: ['smoke_10.png'],
+            scale: {start: 0.03, end: 0.06},
+            maxAliveParticles: 1,
+            lifespan: 200,
+            gravityY: -50,
+            duration: 1,
+            alpha: {start: 0.8, end: 0.25}
+        });
+        my.vfx.collect.setDepth(-10); // Ensure it appears behind the player
+        my.vfx.collect.stop();
     }
 
     update(time, delta) {
@@ -363,15 +375,30 @@ class Platformer extends Phaser.Scene {
 
         // TODO: Add coin collision handler
         // Handle collision detection with coins
-        this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
-            obj2.destroy(); // remove coin on overlap
+        this.physics.add.overlap(my.sprite.player, this.coinGroup, (player, coin) => {
+            this.tweens.add({
+                targets: coin,
+                y: coin.y - 15,
+                alpha: 0,
+                duration: 600,
+                ease: 'Back.easeOut',
+                onComplete: () => coin.destroy()
+            });
             this.updateScore(1); // increment score
         });
-        this.physics.add.overlap(my.sprite.player, this.diamondGroup, (obj1, obj2) => {
-            obj2.destroy(); // remove diamond on overlap
+        this.physics.add.overlap(my.sprite.player, this.diamondGroup, (player, diamond) => {
+            this.tweens.killTweensOf(diamond);  // Cancel bob
+            this.tweens.add({
+                targets: diamond,
+                y: diamond.y - 15,
+                alpha: 0,
+                duration: 600,
+                ease: 'Back.easeOut',
+                onComplete: () => diamond.destroy()
+            });
             this.updateScore(5); // increment score
         });
-        this.physics.add.overlap(my.sprite.player, this.endFlag, (obj1, obj2) => {
+        this.physics.add.overlap(my.sprite.player, this.endFlag, (player, flag) => {
             if (!this.isGameOver) {
                 this.isGameOver = true; // prevent multiple triggers
                 console.log("You reached the end! Final Score: " + this.score);
