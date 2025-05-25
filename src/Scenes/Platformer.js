@@ -13,6 +13,7 @@ class Platformer extends Phaser.Scene {
         this.SCALE = 2.0;
 
         this.isGameOver = false;
+        this.wasGrounded = false;
         this.inputLocked = false;
         this.spawnPoint = [75, 245]; // default spawn point
         this.coyoteTime = 0;
@@ -106,12 +107,37 @@ class Platformer extends Phaser.Scene {
             scale: {start: 0.03, end: 0.05},
             maxAliveParticles: 3,
             lifespan: 250,
-            gravityY: -40,
+            gravityY: -50,
             duration: 500,
             alpha: {start: 1, end: 0.1}, 
         });
-
         my.vfx.walking.stop();
+
+        // Jumping vfx
+        my.vfx.jumping = this.add.particles(0, 0, "kenny-particles", {
+            frame: ['smoke_10.png'],
+            scale: {start: 0.03, end: 0.07},
+            maxAliveParticles: 1,
+            lifespan: 200,
+            gravityY: -50,
+            duration: 1,
+            alpha: {start: 0.8, end: 0.25}
+        });
+        my.vfx.jumping.setDepth(2); // Ensure it appears above the player
+        my.vfx.jumping.stop();
+
+        // Landing vfx
+        my.vfx.landing = this.add.particles(0, 0, "kenny-particles", {
+            frame: ['smoke_10.png'],
+            scale: {start: 0.03, end: 0.06},
+            maxAliveParticles: 1,
+            lifespan: 200,
+            gravityY: -50,
+            duration: 1,
+            alpha: {start: 0.8, end: 0.25}
+        });
+        my.vfx.landing.setDepth(2); // Ensure it appears above the player
+        my.vfx.landing.stop();
     }
 
     update(time, delta) {
@@ -159,8 +185,21 @@ class Platformer extends Phaser.Scene {
             my.vfx.walking.stop();
         }
 
+        const groundedNow = my.sprite.player.body.blocked.down;
+        if (groundedNow && !this.wasGrounded) {
+            // Trigger landing VFX only on landing
+            my.vfx.landing.x = my.sprite.player.x;
+            my.vfx.landing.y = my.sprite.player.y + my.sprite.player.displayHeight - 5;
+            my.vfx.landing.start();
+            this.time.delayedCall(10, () => {
+                my.vfx.landing.stop(); // stop the jump vfx
+            });
+        }
+        // Update for next frame
+        this.wasGrounded = groundedNow;
+
         // Track how many consecutive frames the player is grounded
-        if (my.sprite.player.body.blocked.down) {
+        if (groundedNow) {
             this.coyoteTime = this.COYOTE_DURATION;
             this.hasJumped = false;
         } else {
@@ -173,7 +212,7 @@ class Platformer extends Phaser.Scene {
 
         // player jump
         // note that we need body.blocked rather than body.touching b/c the former applies to tilemap tiles and the latter to the "ground"
-        if(!my.sprite.player.body.blocked.down) {
+        if(!groundedNow) {
             my.sprite.player.anims.play('jump');
         }
         if(!this.inputLocked && this.coyoteTime > 0 && this.jumpBufferRemaining > 0 && !this.hasJumped) {
@@ -181,6 +220,14 @@ class Platformer extends Phaser.Scene {
             this.coyoteTime = 0; // reset coyote time
             this.jumpBufferRemaining = 0; // reset jump buffer time
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
+
+            // Play jump vfx
+            my.vfx.jumping.x = my.sprite.player.x; // center the particle on the player
+            my.vfx.jumping.y = my.sprite.player.y + my.sprite.player.displayHeight / 2 - 5; // center the particle on the player
+            my.vfx.jumping.start();
+            this.time.delayedCall(10, () => {
+                my.vfx.jumping.stop(); // stop the jump vfx
+            });
         }
 
         // Cut jump short if player releases key while still rising
@@ -201,9 +248,7 @@ class Platformer extends Phaser.Scene {
             });
         }
 
-        const player = my.sprite.player;
-
-        if (player.body.blocked.down) {
+        if (groundedNow) {
             const tile = this.groundLayer.getTileAtWorldXY(my.sprite.player.x, my.sprite.player.y + my.sprite.player.height / 2);
             //console.log(tile.properties);
             if (tile && tile.properties.safeGround) {
