@@ -12,7 +12,8 @@ class Platformer extends Phaser.Scene {
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
         this.isGameOver = false;
-        this.spawnPoint = [25, 240];
+        //this.spawnPoint = [25, 240];
+        this.spawnPoint = [1000, 100];
     }
 
     create() {
@@ -168,7 +169,9 @@ class Platformer extends Phaser.Scene {
         // Display "Game Over" text
         this.gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, "Game over", {
             fontSize: "32px",
-            color: "#ffffff"
+            color: "#ffffff",
+            stroke: "#000000",
+            strokeThickness: 5
         }).setOrigin(0.5);
         this.gameOverText.setVisible(false); // Hide the text initially
         this.gameOverText.setScrollFactor(0); // Make it not scroll with the camera
