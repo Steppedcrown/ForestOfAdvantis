@@ -23,6 +23,10 @@ class Platformer extends Phaser.Scene {
         this.JUMP_CUTOFF_VELOCITY = -200;  // Control how "short" a short hop is
     }
 
+    preload() {
+        this.load.scenePlugin('AnimatedTiles', './lib/AnimatedTiles.js', 'animatedTiles', 'animatedTiles');
+    }
+
     create() {
         // Create a new tilemap game object
         this.map = this.add.tilemap("platformer-level-1", 18, 18, 80, 20);
@@ -34,6 +38,7 @@ class Platformer extends Phaser.Scene {
 
         // Set the background color
         const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
+        console.log("Background color: ", bgColor);
         if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
         // Create layers
@@ -42,9 +47,12 @@ class Platformer extends Phaser.Scene {
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
 
         // Order the layers
-        this.groundLayer.setDepth(-1);
-        this.undergroundLayer.setDepth(-3);
-        this.detailLayer.setDepth(-2);
+        this.groundLayer.setDepth(4);
+        this.undergroundLayer.setDepth(-2);
+        this.detailLayer.setDepth(5);
+
+        // Enable animated tiles
+        this.animatedTiles.init(this.map);
 
         // Make it collidable
         this.groundLayer.setCollisionByProperty({
@@ -56,7 +64,7 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
-        my.sprite.player.setDepth(10);
+        my.sprite.player.setDepth(1);
 
         // Bounds
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
