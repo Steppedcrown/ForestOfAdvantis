@@ -99,14 +99,15 @@ class Platformer extends Phaser.Scene {
         this.aKey = this.input.keyboard.addKey('A');
         this.spaceKey = this.input.keyboard.addKey('SPACE');
 
-        // TMovement vfx
+        // Movement vfx
         my.vfx.walking = this.add.particles(0, 0, "kenny-particles", {
             frame: ['smoke_03.png', 'smoke_09.png'],
             random: true,
-            scale: {start: 0.03, end: 0.1},
-            maxAliveParticles: 8,
-            lifespan: 350,
-            gravityY: -400,
+            scale: {start: 0.03, end: 0.05},
+            maxAliveParticles: 3,
+            lifespan: 250,
+            gravityY: -40,
+            duration: 500,
             alpha: {start: 1, end: 0.1}, 
         });
 
