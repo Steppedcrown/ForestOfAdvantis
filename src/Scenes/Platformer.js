@@ -40,45 +40,6 @@ class Platformer extends Phaser.Scene {
             collides: true
         });
 
-        // TODO: Add createFromObjects here
-        // Find coins in the "Objects" layer in Phaser
-        // Look for them by finding objects with the name "coin"
-        // Assign the coin texture from the tilemap_sheet sprite sheet
-        // Phaser docs:
-        // https://newdocs.phaser.io/docs/3.80.0/focus/Phaser.Tilemaps.Tilemap-createFromObjects
-
-        this.coins = this.map.createFromObjects("Objects", {
-            name: "coin",
-            key: "tilemap_sheet",
-            frame: 151
-        });
-
-        this.diamonds = this.map.createFromObjects("Objects", {
-            name: "diamond",
-            key: "tilemap_sheet",
-            frame: 67
-        });
-
-        this.endFlag = this.map.createFromObjects("Objects", {
-            name: "flag",
-            key: "tilemap_sheet",
-            frame: 111
-        });
-        
-        // TODO: Add turn into Arcade Physics here
-        // Since createFromObjects returns an array of regular Sprites, we need to convert 
-        // them into Arcade Physics sprites (STATIC_BODY, so they don't move) 
-        this.physics.world.enable(this.coins, Phaser.Physics.Arcade.STATIC_BODY);
-        this.physics.world.enable(this.diamonds, Phaser.Physics.Arcade.STATIC_BODY);
-        this.physics.world.enable(this.endFlag, Phaser.Physics.Arcade.STATIC_BODY);
-
-        // Create a Phaser group out of the array this.coins
-        // This will be used for collision detection below.
-        this.coinGroup = this.add.group(this.coins);
-        this.diamondGroup = this.add.group(this.diamonds);
-        this.endFlag = this.add.group(this.endFlag);
-        
-
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(this.spawnPoint[0], this.spawnPoint[1], "platformer_characters", "tile_0000.png");
         my.sprite.player.setFlip(true, false); // face right
@@ -93,29 +54,9 @@ class Platformer extends Phaser.Scene {
         this.cameras.main.setDeadzone(40, 40);
         this.cameras.main.setZoom(this.SCALE);
 
-        // TODO: Add coin collision handler
-        // Handle collision detection with coins
-        this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
-            obj2.destroy(); // remove coin on overlap
-            this.score += 1; // increment score
-            console.log("Score: " + this.score);
-        });
-        this.physics.add.overlap(my.sprite.player, this.diamondGroup, (obj1, obj2) => {
-            obj2.destroy(); // remove diamond on overlap
-            this.score += 5; // increment score
-            console.log("Score: " + this.score);
-        });
-        this.physics.add.overlap(my.sprite.player, this.endFlag, (obj1, obj2) => {
-            if (!this.isGameOver) {
-                this.isGameOver = true; // prevent multiple triggers
-                console.log("You reached the end! Final Score: " + this.score);
-                this.gameOver("You win!");
-
-            }
-        });
-
         this.addButtons();
         this.setupScore();
+        this.addObjects();
 
         // set up Phaser-provided cursor key input
         cursors = this.input.keyboard.createCursorKeys();
@@ -196,11 +137,11 @@ class Platformer extends Phaser.Scene {
         this.registry.set('playerScore', playerScore);
         
         // Add score text
-        this.displayScore = this.add.bitmapText(this.game.config.width - 175, this.game.config.height - 50, 'myFont', 'Score: ' + this.registry.get('playerScore'), 32);
+        this.displayScore = this.add.bitmapText(500, 200, 'myFont', 'Score: ' + this.registry.get('playerScore'), 32);
         this.displayScore.setScrollFactor(0); // Make it not scroll with the camera
 
         // Add high score text
-        this.displayHighScore = this.add.bitmapText(this.game.config.width - 175, this.game.config.height - 100, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), 32);
+        this.displayHighScore = this.add.bitmapText(500, 300, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), 32);
         this.displayHighScore.setScrollFactor(0); // Make it not scroll with the camera
     }
 
@@ -235,6 +176,67 @@ class Platformer extends Phaser.Scene {
         this.restartButton.setScrollFactor(0); // Make it not scroll with the camera
         this.restartButton.setVisible(false); // Hide the button initially
         this.restartButton.setInteractive(false); // Disable interaction initially
+    }
+
+    addObjects() {
+        // TODO: Add createFromObjects here
+        // Find coins in the "Objects" layer in Phaser
+        // Look for them by finding objects with the name "coin"
+        // Assign the coin texture from the tilemap_sheet sprite sheet
+        // Phaser docs:
+        // https://newdocs.phaser.io/docs/3.80.0/focus/Phaser.Tilemaps.Tilemap-createFromObjects
+
+        this.coins = this.map.createFromObjects("Objects", {
+            name: "coin",
+            key: "tilemap_sheet",
+            frame: 151
+        });
+
+        this.diamonds = this.map.createFromObjects("Objects", {
+            name: "diamond",
+            key: "tilemap_sheet",
+            frame: 67
+        });
+
+        this.endFlag = this.map.createFromObjects("Objects", {
+            name: "flag",
+            key: "tilemap_sheet",
+            frame: 111
+        });
+        
+        // TODO: Add turn into Arcade Physics here
+        // Since createFromObjects returns an array of regular Sprites, we need to convert 
+        // them into Arcade Physics sprites (STATIC_BODY, so they don't move) 
+        this.physics.world.enable(this.coins, Phaser.Physics.Arcade.STATIC_BODY);
+        this.physics.world.enable(this.diamonds, Phaser.Physics.Arcade.STATIC_BODY);
+        this.physics.world.enable(this.endFlag, Phaser.Physics.Arcade.STATIC_BODY);
+
+        // Create a Phaser group out of the array this.coins
+        // This will be used for collision detection below.
+        this.coinGroup = this.add.group(this.coins);
+        this.diamondGroup = this.add.group(this.diamonds);
+        this.endFlag = this.add.group(this.endFlag);
+
+        // TODO: Add coin collision handler
+        // Handle collision detection with coins
+        this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
+            obj2.destroy(); // remove coin on overlap
+            this.score += 1; // increment score
+            console.log("Score: " + this.score);
+        });
+        this.physics.add.overlap(my.sprite.player, this.diamondGroup, (obj1, obj2) => {
+            obj2.destroy(); // remove diamond on overlap
+            this.score += 5; // increment score
+            console.log("Score: " + this.score);
+        });
+        this.physics.add.overlap(my.sprite.player, this.endFlag, (obj1, obj2) => {
+            if (!this.isGameOver) {
+                this.isGameOver = true; // prevent multiple triggers
+                console.log("You reached the end! Final Score: " + this.score);
+                this.gameOver("You win!");
+
+            }
+        });
     }
 
     gameOver(text="Game Over") {
