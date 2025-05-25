@@ -5,14 +5,14 @@ class Platformer extends Phaser.Scene {
 
     init() {
         // variables and settings
-        this.ACCELERATION = 600;
-        this.DRAG = 3 * this.ACCELERATION;    // DRAG < ACCELERATION = icy slide
+        this.ACCELERATION = 500;
+        this.DRAG = 4 * this.ACCELERATION;    // DRAG < ACCELERATION = icy slide
         this.physics.world.gravity.y = 1500;
         this.JUMP_VELOCITY = -500;
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
         this.isGameOver = false;
-        this.spawnPoint = [1000, 100];
+        this.spawnPoint = [25, 240];
     }
 
     create() {
@@ -43,6 +43,9 @@ class Platformer extends Phaser.Scene {
         my.sprite.player = this.physics.add.sprite(this.spawnPoint[0], this.spawnPoint[1], "platformer_characters", "tile_0000.png");
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setCollideWorldBounds(true);
+        my.sprite.player.setMaxVelocity(300, 1500); // max speed
+        my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
+
 
         // Enable collision handling
         this.physics.add.collider(my.sprite.player, this.groundLayer);
@@ -115,6 +118,7 @@ class Platformer extends Phaser.Scene {
             // Set acceleration to 0 and have DRAG take over
             my.sprite.player.setAccelerationX(0);
             my.sprite.player.setDragX(this.DRAG);
+            //my.sprite.player.setVelocityX(0); // stop horizontal movement
             my.sprite.player.anims.play('idle');
             // TODO: have the vfx stop playing
             my.vfx.walking.stop();
@@ -135,12 +139,15 @@ class Platformer extends Phaser.Scene {
         let playerScore = this.registry.get('playerScore') || 0;
         this.registry.set('playerScore', playerScore);
         
+        let xPos = 865;
+        let yPos = 480;
+        let fontSize = 24;
         // Add score text
-        this.displayScore = this.add.bitmapText(500, 200, 'myFont', 'Score: ' + this.registry.get('playerScore'), 32);
+        this.displayScore = this.add.bitmapText(xPos, yPos, 'myFont', 'Score: ' + this.registry.get('playerScore'), fontSize);
         this.displayScore.setScrollFactor(0); // Make it not scroll with the camera
 
         // Add high score text
-        this.displayHighScore = this.add.bitmapText(500, 300, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), 32);
+        this.displayHighScore = this.add.bitmapText(xPos, yPos + 25, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), fontSize);
         this.displayHighScore.setScrollFactor(0); // Make it not scroll with the camera
     }
 
@@ -227,12 +234,10 @@ class Platformer extends Phaser.Scene {
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
             obj2.destroy(); // remove coin on overlap
             this.updateScore(1); // increment score
-            console.log("Score: " + this.score);
         });
         this.physics.add.overlap(my.sprite.player, this.diamondGroup, (obj1, obj2) => {
             obj2.destroy(); // remove diamond on overlap
             this.updateScore(5); // increment score
-            console.log("Score: " + this.score);
         });
         this.physics.add.overlap(my.sprite.player, this.endFlag, (obj1, obj2) => {
             if (!this.isGameOver) {
