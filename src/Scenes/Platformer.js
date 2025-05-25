@@ -21,6 +21,7 @@ class Platformer extends Phaser.Scene {
         this.hasJumped = false; // flag to check if the player has jumped
         this.JUMP_BUFFER_DURATION = 100; // milliseconds to buffer a jump input
         this.JUMP_CUTOFF_VELOCITY = -200;  // Control how "short" a short hop is
+        this.UI_DEPTH = 99; // UI depth for buttons and text
     }
 
     preload() {
@@ -226,6 +227,10 @@ class Platformer extends Phaser.Scene {
         // Add high score text
         this.displayHighScore = this.add.bitmapText(xPos, yPos + 25, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), fontSize);
         this.displayHighScore.setScrollFactor(0); // Make it not scroll with the camera
+
+        // Move to front
+        this.displayScore.setDepth(this.UI_DEPTH);
+        this.displayHighScore.setDepth(this.UI_DEPTH);
     }
 
     updateScore(givenPoints) {
@@ -236,13 +241,12 @@ class Platformer extends Phaser.Scene {
 
     addButtons() {
         // Restart game button
-        let depth = 10;
         // Create a semi-transparent overlay
         this.buttonRect = this.add.rectangle(this.scale.width/2, this.scale.height/2 + 20, 200, 60, 0x000000, 0.5);
         this.buttonRect.setOrigin(0.5, 0.5);
         this.buttonRect.setScrollFactor(0); // Make it not scroll with the camera
         this.buttonRect.setVisible(false); // Hide the rectangle initially
-        this.buttonRect.setDepth(depth); // Ensure it appears above other elements
+        this.buttonRect.setDepth(this.UI_DEPTH); // Ensure it appears above other elements
 
         // Display "Game Over" text
         this.gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, "Game over", {
@@ -269,7 +273,7 @@ class Platformer extends Phaser.Scene {
         this.restartButton.setScrollFactor(0); // Make it not scroll with the camera
         this.restartButton.setVisible(false); // Hide the button initially
         this.restartButton.setInteractive(false); // Disable interaction initially
-        this.restartButton.setDepth(depth); // Ensure it appears above other elements
+        this.restartButton.setDepth(this.UI_DEPTH); // Ensure it appears above other elements
     }
 
     addObjects() {
@@ -337,6 +341,20 @@ class Platformer extends Phaser.Scene {
         this.endFlag.getChildren().forEach(flag => {
             flag.anims.play('flagWave');
         });
+
+        // Diamond bob
+        this.diamondGroup.getChildren().forEach(diamond => {
+            this.tweens.add({ 
+                targets: diamond, 
+                y: diamond.y - 3, 
+                duration: 400, 
+                yoyo: true, 
+                repeat: -1, 
+                ease: 'Sine.easeInOut',
+                delay: Phaser.Math.Between(0, 500) // random stagger up to 300ms
+            });
+        });
+
     }
 
     gameOver(text="Game Over") {
