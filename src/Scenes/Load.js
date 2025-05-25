@@ -20,7 +20,7 @@ class Load extends Phaser.Scene {
         });
 
         // Font
-        this.load.bitmapFont('myFont', 'pixel.png', 'pixel.xml');
+        this.load.bitmapFont('myFont', 'myFont.png', 'myFont.xml');
 
         // Oooh, fancy. A multi atlas is a texture atlas which has the textures spread
         // across multiple png files, so as to keep their size small for use with
