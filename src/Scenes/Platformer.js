@@ -58,6 +58,7 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setDepth(10);
 
         // Bounds
+        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
         this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
         my.sprite.player.setCollideWorldBounds(true);
         this.lastSafePosition = this.spawnPoint;
