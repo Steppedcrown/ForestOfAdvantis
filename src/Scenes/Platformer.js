@@ -6,7 +6,7 @@ class Platformer extends Phaser.Scene {
     init() {
         // variables and settings
         this.ACCELERATION = 500;
-        this.DRAG = 4 * this.ACCELERATION;    // DRAG < ACCELERATION = icy slide
+        this.DRAG = 6 * this.ACCELERATION;    // DRAG < ACCELERATION = icy slide
         this.physics.world.gravity.y = 1500;
         this.JUMP_VELOCITY = -500;
         this.PARTICLE_VELOCITY = 50;
@@ -55,8 +55,8 @@ class Platformer extends Phaser.Scene {
 
         // Add camera
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-        this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25); // (target, [,roundPixels][,lerpX][,lerpY])
-        this.cameras.main.setDeadzone(40, 40);
+        this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1); // (target, [,roundPixels][,lerpX][,lerpY])
+        this.cameras.main.setDeadzone(20, 20);
         this.cameras.main.setZoom(this.SCALE);
 
         this.addButtons();
@@ -85,6 +85,7 @@ class Platformer extends Phaser.Scene {
 
     update() {
         if(cursors.left.isDown || this.aKey.isDown) {
+            if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
             my.sprite.player.setAccelerationX(-this.ACCELERATION);
             my.sprite.player.resetFlip();
             my.sprite.player.anims.play('walk', true);
@@ -97,6 +98,7 @@ class Platformer extends Phaser.Scene {
             }
             
         } else if(cursors.right.isDown || this.dKey.isDown) {
+            if (my.sprite.player.body.velocity.x < 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
             my.sprite.player.setAccelerationX(this.ACCELERATION);
             my.sprite.player.setFlip(true, false);
             my.sprite.player.anims.play('walk', true);
@@ -139,13 +141,12 @@ class Platformer extends Phaser.Scene {
 
         if (player.body.blocked.down) {
             const tile = this.groundLayer.getTileAtWorldXY(my.sprite.player.x, my.sprite.player.y + my.sprite.player.height / 2);
-            console.log(tile);
-            if (tile && tile.properties.safeSpawn) {
+            //console.log(tile.properties);
+            if (tile && tile.properties.safeGround) {
                 this.lastSafePosition = [my.sprite.player.x, my.sprite.player.y];
-                console.log("Safe spawn point updated to: ", this.lastSafePosition);
+                //console.log("Safe spawn point updated to: ", this.lastSafePosition);
             }
         }
-
     }
 
     setupScore() {
