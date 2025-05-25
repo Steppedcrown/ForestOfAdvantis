@@ -16,7 +16,9 @@ class Platformer extends Phaser.Scene {
         this.spawnPoint = [26, 245]; // default spawn point
         this.coyoteTime = 0;
         this.COYOTE_DURATION = 100; // milliseconds of grace period
-
+        this.jumpBufferRemaining = 0;
+        this.hasJumped = false; // flag to check if the player has jumped
+        this.JUMP_BUFFER_DURATION = 100; // milliseconds to buffer a jump input
     }
 
     create() {
@@ -87,7 +89,7 @@ class Platformer extends Phaser.Scene {
         my.vfx.walking.stop();
     }
 
-    update(delta) {
+    update(time, delta) {
         if(cursors.left.isDown || this.aKey.isDown) {
             if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
             my.sprite.player.setAccelerationX(-this.ACCELERATION);
@@ -124,16 +126,27 @@ class Platformer extends Phaser.Scene {
             my.vfx.walking.stop();
         }
 
-        if (!my.sprite.player.body.blocked.down) this.coyoteTime -= delta / 10000; // decrement coyote time
-        else this.coyoteTime = this.COYOTE_DURATION; // reset coyote time
+        // Track how many consecutive frames the player is grounded
+        if (my.sprite.player.body.blocked.down) {
+            this.coyoteTime = this.COYOTE_DURATION;
+            this.hasJumped = false;
+        } else {
+            this.groundedFrames = 0;
+            this.coyoteTime -= delta;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey)) this.jumpBufferRemaining = this.JUMP_BUFFER_DURATION;
+        else this.jumpBufferRemaining -= delta; // decrement jump buffer time
 
         // player jump
         // note that we need body.blocked rather than body.touching b/c the former applies to tilemap tiles and the latter to the "ground"
         if(!my.sprite.player.body.blocked.down) {
             my.sprite.player.anims.play('jump');
         }
-        if((this.coyoteTime > 0) && (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
+        if(this.coyoteTime > 0 && this.jumpBufferRemaining > 0 && !this.hasJumped) {
+            this.hasJumped = true; // set jump flag to true
             this.coyoteTime = 0; // reset coyote time
+            this.jumpBufferRemaining = 0; // reset jump buffer time
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
         }
 
