@@ -13,6 +13,7 @@ class Platformer extends Phaser.Scene {
         this.SCALE = 2.0;
 
         this.isGameOver = false;
+        this.inputLocked = false;
         this.spawnPoint = [26, 245]; // default spawn point
         this.coyoteTime = 0;
         this.COYOTE_DURATION = 100; // milliseconds of grace period
@@ -36,9 +37,14 @@ class Platformer extends Phaser.Scene {
         if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
         // Create layers
+        this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
         this.undergroundLayer = this.map.createLayer("Underground", this.tileset, 0, 0);
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
-        this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
+
+        // Order the layers
+        this.groundLayer.setDepth(-1);
+        this.undergroundLayer.setDepth(-3);
+        this.detailLayer.setDepth(-2);
 
         // Make it collidable
         this.groundLayer.setCollisionByProperty({
@@ -50,6 +56,13 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
+        my.sprite.player.setDepth(10);
+
+        // Bounds
+        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+        this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
+        my.sprite.player.setCollideWorldBounds(true);
+        this.lastSafePosition = this.spawnPoint;
 
         // Bounds
         this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
@@ -91,41 +104,41 @@ class Platformer extends Phaser.Scene {
     }
 
     update(time, delta) {
-        if(cursors.left.isDown || this.aKey.isDown) {
-            if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
-            my.sprite.player.setAccelerationX(-this.ACCELERATION);
-            my.sprite.player.resetFlip();
-            my.sprite.player.anims.play('walk', true);
-            // TODO: add particle following code here
-            my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
-            my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
-            // Only play smoke effect if touching the ground
-            if (my.sprite.player.body.blocked.down) {
-                my.vfx.walking.start();
-            }
-            
-        } else if(cursors.right.isDown || this.dKey.isDown) {
-            if (my.sprite.player.body.velocity.x < 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
-            my.sprite.player.setAccelerationX(this.ACCELERATION);
-            my.sprite.player.setFlip(true, false);
-            my.sprite.player.anims.play('walk', true);
-            // TODO: add particle following code here
-            my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
-            my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
-            // Only play smoke effect if touching the ground
-            if (my.sprite.player.body.blocked.down) {
-                my.vfx.walking.start();
-            }
-
-        } else {
-            // Set acceleration to 0 and have DRAG take over
-            my.sprite.player.setAccelerationX(0);
-            my.sprite.player.setDragX(this.DRAG);
-            //my.sprite.player.setVelocityX(0); // stop horizontal movement
-            my.sprite.player.anims.play('idle');
-            // TODO: have the vfx stop playing
-            my.vfx.walking.stop();
-        }
+        if (!this.inputLocked) {
+            if(cursors.left.isDown || this.aKey.isDown) {
+                if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
+                my.sprite.player.setAccelerationX(-this.ACCELERATION);
+                my.sprite.player.resetFlip();
+                my.sprite.player.anims.play('walk', true);
+                // TODO: add particle following code here
+                my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
+                my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
+                // Only play smoke effect if touching the ground
+                if (my.sprite.player.body.blocked.down) {
+                    my.vfx.walking.start();
+                } 
+            } else if(cursors.right.isDown || this.dKey.isDown) {
+                if (my.sprite.player.body.velocity.x < 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
+                my.sprite.player.setAccelerationX(this.ACCELERATION);
+                my.sprite.player.setFlip(true, false);
+                my.sprite.player.anims.play('walk', true);
+                // TODO: add particle following code here
+                my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
+                my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
+                // Only play smoke effect if touching the ground
+                if (my.sprite.player.body.blocked.down) {
+                    my.vfx.walking.start();
+                }
+            } else {
+                // Set acceleration to 0 and have DRAG take over
+                my.sprite.player.setAccelerationX(0);
+                my.sprite.player.setDragX(this.DRAG);
+                //my.sprite.player.setVelocityX(0); // stop horizontal movement
+                my.sprite.player.anims.play('idle');
+                // TODO: have the vfx stop playing
+                my.vfx.walking.stop();
+            } 
+        } else my.vfx.walking.stop();
 
         // Track how many consecutive frames the player is grounded
         if (my.sprite.player.body.blocked.down) {
@@ -144,7 +157,7 @@ class Platformer extends Phaser.Scene {
         if(!my.sprite.player.body.blocked.down) {
             my.sprite.player.anims.play('jump');
         }
-        if(this.coyoteTime > 0 && this.jumpBufferRemaining > 0 && !this.hasJumped) {
+        if(!this.inputLocked && this.coyoteTime > 0 && this.jumpBufferRemaining > 0 && !this.hasJumped) {
             this.hasJumped = true; // set jump flag to true
             this.coyoteTime = 0; // reset coyote time
             this.jumpBufferRemaining = 0; // reset jump buffer time
@@ -163,6 +176,10 @@ class Platformer extends Phaser.Scene {
             my.sprite.player.setVelocity(0, 0); // reset velocity
             my.sprite.player.setAcceleration(0, 0); // reset acceleration
             my.sprite.player.setDrag(0, 0); // reset drag
+            this.inputLocked = true;
+            this.time.delayedCall(200, () => {
+                this.inputLocked = false;
+            });
         }
 
         const player = my.sprite.player;
@@ -302,6 +319,7 @@ class Platformer extends Phaser.Scene {
 
         this.restartButton.setVisible(true); // Show the button
         this.restartButton.setInteractive(true); // Enable interaction
+        this.inputLocked = true;
     }
 
     restartGame() {
