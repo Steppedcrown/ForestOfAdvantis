@@ -40,11 +40,13 @@ class Platformer extends Phaser.Scene {
         this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
         this.undergroundLayer = this.map.createLayer("Underground", this.tileset, 0, 0);
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
+        this.waterfallLayer = this.map.createLayer("Waterfalls", this.tileset, 0, 0);
 
         // Order the layers
-        this.groundLayer.setDepth(4);
+        this.groundLayer.setDepth(-1);
         this.undergroundLayer.setDepth(-2);
-        this.detailLayer.setDepth(5);
+        this.detailLayer.setDepth(-3);
+        this.waterfallLayer.setDepth(2);
 
         // Enable animated tiles
         this.animatedTiles.init(this.map);
@@ -59,7 +61,7 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
-        my.sprite.player.setDepth(2);
+        my.sprite.player.setDepth(1);
 
         // Bounds
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
@@ -145,7 +147,15 @@ class Platformer extends Phaser.Scene {
                 // TODO: have the vfx stop playing
                 my.vfx.walking.stop();
             } 
-        } else my.vfx.walking.stop();
+        } else {
+            // Set acceleration to 0 and have DRAG take over
+            my.sprite.player.setAccelerationX(0);
+            my.sprite.player.setDragX(this.DRAG);
+            //my.sprite.player.setVelocityX(0); // stop horizontal movement
+            my.sprite.player.anims.play('idle');
+            // TODO: have the vfx stop playing
+            my.vfx.walking.stop();
+        }
 
         // Track how many consecutive frames the player is grounded
         if (my.sprite.player.body.blocked.down) {
