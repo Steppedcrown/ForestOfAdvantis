@@ -12,13 +12,11 @@ class Platformer extends Phaser.Scene {
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
         this.isGameOver = false;
-        //this.spawnPoint = [25, 240];
-        this.spawnPoint = [1000, 100];
+        this.spawnPoint = [25, 245]; // default spawn point
     }
 
     create() {
-        // Create a new tilemap game object which uses 18x18 pixel tiles, and is
-        // 45 tiles wide and 25 tiles tall.
+        // Create a new tilemap game object
         this.map = this.add.tilemap("platformer-level-1", 18, 18, 80, 20);
 
         // Add a tileset to the map
@@ -30,7 +28,7 @@ class Platformer extends Phaser.Scene {
         const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
         if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
-        // Create a layer
+        // Create layers
         this.undergroundLayer = this.map.createLayer("Underground", this.tileset, 0, 0);
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
         this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
@@ -43,9 +41,12 @@ class Platformer extends Phaser.Scene {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(this.spawnPoint[0], this.spawnPoint[1], "platformer_characters", "tile_0000.png");
         my.sprite.player.setFlip(true, false); // face right
-        my.sprite.player.setCollideWorldBounds(true);
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
+
+        // Bounds
+        this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
+        my.sprite.player.setCollideWorldBounds(true);
 
 
         // Enable collision handling
@@ -61,28 +62,19 @@ class Platformer extends Phaser.Scene {
         this.setupScore();
         this.addObjects();
 
-        // set up Phaser-provided cursor key input
+        // Input handling
         cursors = this.input.keyboard.createCursorKeys();
         this.dKey = this.input.keyboard.addKey('D');
         this.aKey = this.input.keyboard.addKey('A');
         this.spaceKey = this.input.keyboard.addKey('SPACE');
 
-        /* debug key listener (assigned to D key)
-        this.input.keyboard.on('keydown-D', () => {
-            this.physics.world.drawDebug = this.physics.world.drawDebug ? false : true
-            this.physics.world.debugGraphic.clear()
-        }, this); */
-
-        // TODO: Add movement vfx here
+        // TMovement vfx
         my.vfx.walking = this.add.particles(0, 0, "kenny-particles", {
             frame: ['smoke_03.png', 'smoke_09.png'],
-            // TODO: Try: add random: true
             random: true,
             scale: {start: 0.03, end: 0.1},
-            // TODO: Try: maxAliveParticles: 8,
             maxAliveParticles: 8,
             lifespan: 350,
-            // TODO: Try: gravityY: -400,
             gravityY: -400,
             alpha: {start: 1, end: 0.1}, 
         });
@@ -132,6 +124,14 @@ class Platformer extends Phaser.Scene {
         }
         if(my.sprite.player.body.blocked.down && (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
+        }
+
+        // If below world
+        if(my.sprite.player.y > this.scale.height) {
+            my.sprite.player.setPosition(this.spawnPoint[0], this.spawnPoint[1]); // respawn at spawn point
+            my.sprite.player.setVelocity(0, 0); // reset velocity
+            my.sprite.player.setAcceleration(0, 0); // reset acceleration
+            my.sprite.player.setDrag(0, 0); // reset drag
         }
     }
 
