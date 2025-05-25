@@ -14,13 +14,18 @@ class Platformer extends Phaser.Scene {
 
         this.isGameOver = false;
         this.inputLocked = false;
-        this.spawnPoint = [26, 245]; // default spawn point
+        this.spawnPoint = [75, 245]; // default spawn point
         this.coyoteTime = 0;
         this.COYOTE_DURATION = 100; // milliseconds of grace period
         this.jumpBufferRemaining = 0;
         this.hasJumped = false; // flag to check if the player has jumped
         this.JUMP_BUFFER_DURATION = 100; // milliseconds to buffer a jump input
         this.JUMP_CUTOFF_VELOCITY = -200;  // Control how "short" a short hop is
+        this.UI_DEPTH = 99; // UI depth for buttons and text
+    }
+
+    preload() {
+        this.load.scenePlugin('AnimatedTiles', './lib/AnimatedTiles.js', 'animatedTiles', 'animatedTiles');
     }
 
     create() {
@@ -32,19 +37,20 @@ class Platformer extends Phaser.Scene {
         // Second parameter: key for the tilesheet (from this.load.image in Load.js)
         this.tileset = this.map.addTilesetImage("kenny_tilemap_packed", "tilemap_tiles");
 
-        // Set the background color
-        const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
-        if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
-
         // Create layers
         this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
         this.undergroundLayer = this.map.createLayer("Underground", this.tileset, 0, 0);
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
+        this.waterfallLayer = this.map.createLayer("Waterfalls", this.tileset, 0, 0);
 
         // Order the layers
         this.groundLayer.setDepth(-1);
-        this.undergroundLayer.setDepth(-3);
-        this.detailLayer.setDepth(-2);
+        this.undergroundLayer.setDepth(-2);
+        this.detailLayer.setDepth(-3);
+        this.waterfallLayer.setDepth(2);
+
+        // Enable animated tiles
+        this.animatedTiles.init(this.map);
 
         // Make it collidable
         this.groundLayer.setCollisionByProperty({
@@ -56,7 +62,7 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setFlip(true, false); // face right
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
-        my.sprite.player.setDepth(10);
+        my.sprite.player.setDepth(1);
 
         // Bounds
         this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
@@ -78,6 +84,10 @@ class Platformer extends Phaser.Scene {
         this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1); // (target, [,roundPixels][,lerpX][,lerpY])
         this.cameras.main.setDeadzone(20, 20);
         this.cameras.main.setZoom(this.SCALE);
+        // Set the background color
+        const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
+        console.log("Background color: ", bgColor);
+        if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
         this.addButtons();
         this.setupScore();
@@ -138,7 +148,15 @@ class Platformer extends Phaser.Scene {
                 // TODO: have the vfx stop playing
                 my.vfx.walking.stop();
             } 
-        } else my.vfx.walking.stop();
+        } else {
+            // Set acceleration to 0 and have DRAG take over
+            my.sprite.player.setAccelerationX(0);
+            my.sprite.player.setDragX(this.DRAG);
+            //my.sprite.player.setVelocityX(0); // stop horizontal movement
+            my.sprite.player.anims.play('idle');
+            // TODO: have the vfx stop playing
+            my.vfx.walking.stop();
+        }
 
         // Track how many consecutive frames the player is grounded
         if (my.sprite.player.body.blocked.down) {
@@ -209,6 +227,10 @@ class Platformer extends Phaser.Scene {
         // Add high score text
         this.displayHighScore = this.add.bitmapText(xPos, yPos + 25, 'myFont', 'High: ' + (parseInt(localStorage.getItem('highScore')) || 0), fontSize);
         this.displayHighScore.setScrollFactor(0); // Make it not scroll with the camera
+
+        // Move to front
+        this.displayScore.setDepth(this.UI_DEPTH);
+        this.displayHighScore.setDepth(this.UI_DEPTH);
     }
 
     updateScore(givenPoints) {
@@ -224,6 +246,7 @@ class Platformer extends Phaser.Scene {
         this.buttonRect.setOrigin(0.5, 0.5);
         this.buttonRect.setScrollFactor(0); // Make it not scroll with the camera
         this.buttonRect.setVisible(false); // Hide the rectangle initially
+        this.buttonRect.setDepth(this.UI_DEPTH); // Ensure it appears above other elements
 
         // Display "Game Over" text
         this.gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, "Game over", {
@@ -250,6 +273,7 @@ class Platformer extends Phaser.Scene {
         this.restartButton.setScrollFactor(0); // Make it not scroll with the camera
         this.restartButton.setVisible(false); // Hide the button initially
         this.restartButton.setInteractive(false); // Disable interaction initially
+        this.restartButton.setDepth(this.UI_DEPTH); // Ensure it appears above other elements
     }
 
     addObjects() {
@@ -309,6 +333,28 @@ class Platformer extends Phaser.Scene {
 
             }
         });
+
+        // Play animations
+        this.coinGroup.getChildren().forEach(coin => {
+            coin.anims.play('coinSpin');
+        });
+        this.endFlag.getChildren().forEach(flag => {
+            flag.anims.play('flagWave');
+        });
+
+        // Diamond bob
+        this.diamondGroup.getChildren().forEach(diamond => {
+            this.tweens.add({ 
+                targets: diamond, 
+                y: diamond.y - 3, 
+                duration: 400, 
+                yoyo: true, 
+                repeat: -1, 
+                ease: 'Sine.easeInOut',
+                delay: Phaser.Math.Between(0, 500) // random stagger up to 300ms
+            });
+        });
+
     }
 
     gameOver(text="Game Over") {
