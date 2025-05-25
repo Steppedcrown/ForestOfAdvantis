@@ -12,7 +12,7 @@ class Platformer extends Phaser.Scene {
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
         this.isGameOver = false;
-        this.spawnPoint = [25, 245]; // default spawn point
+        this.spawnPoint = [26, 245]; // default spawn point
     }
 
     create() {
@@ -47,6 +47,7 @@ class Platformer extends Phaser.Scene {
         // Bounds
         this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
         my.sprite.player.setCollideWorldBounds(true);
+        this.lastSafePosition = this.spawnPoint;
 
 
         // Enable collision handling
@@ -128,11 +129,23 @@ class Platformer extends Phaser.Scene {
 
         // If below world
         if(my.sprite.player.y > this.scale.height) {
-            my.sprite.player.setPosition(this.spawnPoint[0], this.spawnPoint[1]); // respawn at spawn point
+            my.sprite.player.setPosition(this.lastSafePosition[0], this.lastSafePosition[1]); // respawn at spawn point
             my.sprite.player.setVelocity(0, 0); // reset velocity
             my.sprite.player.setAcceleration(0, 0); // reset acceleration
             my.sprite.player.setDrag(0, 0); // reset drag
         }
+
+        const player = my.sprite.player;
+
+        if (player.body.blocked.down) {
+            const tile = this.groundLayer.getTileAtWorldXY(my.sprite.player.x, my.sprite.player.y + my.sprite.player.height / 2);
+            console.log(tile);
+            if (tile && tile.properties.safeSpawn) {
+                this.lastSafePosition = [my.sprite.player.x, my.sprite.player.y];
+                console.log("Safe spawn point updated to: ", this.lastSafePosition);
+            }
+        }
+
     }
 
     setupScore() {
