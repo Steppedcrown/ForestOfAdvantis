@@ -11,7 +11,6 @@ class Platformer extends Phaser.Scene {
         this.JUMP_VELOCITY = -500;
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
-        this.score = 0;
         this.isGameOver = false;
         this.spawnPoint = [1000, 100];
     }
@@ -145,6 +144,12 @@ class Platformer extends Phaser.Scene {
         this.displayHighScore.setScrollFactor(0); // Make it not scroll with the camera
     }
 
+    updateScore(givenPoints) {
+        let score = this.registry.get('playerScore') + givenPoints;
+        this.registry.set('playerScore', score);
+        this.displayScore.setText('Score: ' + this.registry.get('playerScore'));
+    }
+
     addButtons() {
         // Restart game button
         // Create a semi-transparent overlay
@@ -221,12 +226,12 @@ class Platformer extends Phaser.Scene {
         // Handle collision detection with coins
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (obj1, obj2) => {
             obj2.destroy(); // remove coin on overlap
-            this.score += 1; // increment score
+            this.updateScore(1); // increment score
             console.log("Score: " + this.score);
         });
         this.physics.add.overlap(my.sprite.player, this.diamondGroup, (obj1, obj2) => {
             obj2.destroy(); // remove diamond on overlap
-            this.score += 5; // increment score
+            this.updateScore(5); // increment score
             console.log("Score: " + this.score);
         });
         this.physics.add.overlap(my.sprite.player, this.endFlag, (obj1, obj2) => {
@@ -257,6 +262,14 @@ class Platformer extends Phaser.Scene {
         this.restartButton.setVisible(false); // Hide the button
         this.restartButton.setInteractive(false); // Disable interaction
 
+        let playerScore = this.registry.get('playerScore');
+        // Check if the player score is greater than the high score
+        if (playerScore > parseInt(localStorage.getItem('highScore')) || !localStorage.getItem('highScore')) {
+            localStorage.setItem('highScore', playerScore);
+            this.displayHighScore.setText('High: ' + parseInt(localStorage.getItem('highScore')));
+        }
+
+        this.registry.set('playerScore', 0);
         this.scene.stop("level1");
         this.scene.start("level1");
     }
