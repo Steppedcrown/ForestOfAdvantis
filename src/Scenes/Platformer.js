@@ -19,6 +19,7 @@ class Platformer extends Phaser.Scene {
         this.jumpBufferRemaining = 0;
         this.hasJumped = false; // flag to check if the player has jumped
         this.JUMP_BUFFER_DURATION = 100; // milliseconds to buffer a jump input
+        this.JUMP_CUTOFF_VELOCITY = -200;  // Control how "short" a short hop is
     }
 
     create() {
@@ -148,6 +149,12 @@ class Platformer extends Phaser.Scene {
             this.coyoteTime = 0; // reset coyote time
             this.jumpBufferRemaining = 0; // reset jump buffer time
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
+        }
+
+        // Cut jump short if player releases key while still rising
+        if (my.sprite.player.body.velocity.y < 0 && !(cursors.up.isDown || this.spaceKey.isDown)) {
+            // Cut the jump
+            my.sprite.player.setVelocityY(Math.max(my.sprite.player.body.velocity.y, this.JUMP_CUTOFF_VELOCITY));
         }
 
         // If below world
