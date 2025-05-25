@@ -45,8 +45,8 @@ class Platformer extends Phaser.Scene {
 
         // Order the layers
         this.groundLayer.setDepth(-1);
-        this.undergroundLayer.setDepth(-2);
-        this.detailLayer.setDepth(-3);
+        this.undergroundLayer.setDepth(-3);
+        this.detailLayer.setDepth(-2);
         this.waterfallLayer.setDepth(2);
 
         // Enable animated tiles
@@ -65,7 +65,7 @@ class Platformer extends Phaser.Scene {
         my.sprite.player.setDepth(1);
 
         // Bounds
-        this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+        this.physics.world.setBounds(0, -0, this.map.widthInPixels, this.map.heightInPixels);
         this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
         my.sprite.player.setCollideWorldBounds(true);
         this.lastSafePosition = this.spawnPoint;
