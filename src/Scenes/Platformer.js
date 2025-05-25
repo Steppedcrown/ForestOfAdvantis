@@ -6,18 +6,24 @@ class Platformer extends Phaser.Scene {
     init() {
         // variables and settings
         this.ACCELERATION = 500;
-        this.DRAG = 4 * this.ACCELERATION;    // DRAG < ACCELERATION = icy slide
+        this.DRAG = 6 * this.ACCELERATION;    // DRAG < ACCELERATION = icy slide
         this.physics.world.gravity.y = 1500;
         this.JUMP_VELOCITY = -500;
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
+
         this.isGameOver = false;
-        this.spawnPoint = [25, 240];
+        this.spawnPoint = [26, 245]; // default spawn point
+        this.coyoteTime = 0;
+        this.COYOTE_DURATION = 100; // milliseconds of grace period
+        this.jumpBufferRemaining = 0;
+        this.hasJumped = false; // flag to check if the player has jumped
+        this.JUMP_BUFFER_DURATION = 100; // milliseconds to buffer a jump input
+        this.JUMP_CUTOFF_VELOCITY = -200;  // Control how "short" a short hop is
     }
 
     create() {
-        // Create a new tilemap game object which uses 18x18 pixel tiles, and is
-        // 45 tiles wide and 25 tiles tall.
+        // Create a new tilemap game object
         this.map = this.add.tilemap("platformer-level-1", 18, 18, 80, 20);
 
         // Add a tileset to the map
@@ -29,7 +35,7 @@ class Platformer extends Phaser.Scene {
         const bgColor = this.cache.tilemap.get("platformer-level-1").data.backgroundcolor;
         if (bgColor) this.cameras.main.setBackgroundColor(bgColor);
 
-        // Create a layer
+        // Create layers
         this.undergroundLayer = this.map.createLayer("Underground", this.tileset, 0, 0);
         this.detailLayer = this.map.createLayer("Details", this.tileset, 0, 0);
         this.groundLayer = this.map.createLayer("Ground-n-Platforms", this.tileset, 0, 0);
@@ -42,9 +48,13 @@ class Platformer extends Phaser.Scene {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(this.spawnPoint[0], this.spawnPoint[1], "platformer_characters", "tile_0000.png");
         my.sprite.player.setFlip(true, false); // face right
-        my.sprite.player.setCollideWorldBounds(true);
         my.sprite.player.setMaxVelocity(300, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
+
+        // Bounds
+        this.physics.world.setBoundsCollision(true, true, true, false);  // left, right, top, bottom
+        my.sprite.player.setCollideWorldBounds(true);
+        this.lastSafePosition = this.spawnPoint;
 
 
         // Enable collision handling
@@ -52,36 +62,27 @@ class Platformer extends Phaser.Scene {
 
         // Add camera
         this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-        this.cameras.main.startFollow(my.sprite.player, true, 0.25, 0.25); // (target, [,roundPixels][,lerpX][,lerpY])
-        this.cameras.main.setDeadzone(40, 40);
+        this.cameras.main.startFollow(my.sprite.player, true, 0.1, 0.1); // (target, [,roundPixels][,lerpX][,lerpY])
+        this.cameras.main.setDeadzone(20, 20);
         this.cameras.main.setZoom(this.SCALE);
 
         this.addButtons();
         this.setupScore();
         this.addObjects();
 
-        // set up Phaser-provided cursor key input
+        // Input handling
         cursors = this.input.keyboard.createCursorKeys();
         this.dKey = this.input.keyboard.addKey('D');
         this.aKey = this.input.keyboard.addKey('A');
         this.spaceKey = this.input.keyboard.addKey('SPACE');
 
-        /* debug key listener (assigned to D key)
-        this.input.keyboard.on('keydown-D', () => {
-            this.physics.world.drawDebug = this.physics.world.drawDebug ? false : true
-            this.physics.world.debugGraphic.clear()
-        }, this); */
-
-        // TODO: Add movement vfx here
+        // TMovement vfx
         my.vfx.walking = this.add.particles(0, 0, "kenny-particles", {
             frame: ['smoke_03.png', 'smoke_09.png'],
-            // TODO: Try: add random: true
             random: true,
             scale: {start: 0.03, end: 0.1},
-            // TODO: Try: maxAliveParticles: 8,
             maxAliveParticles: 8,
             lifespan: 350,
-            // TODO: Try: gravityY: -400,
             gravityY: -400,
             alpha: {start: 1, end: 0.1}, 
         });
@@ -89,8 +90,9 @@ class Platformer extends Phaser.Scene {
         my.vfx.walking.stop();
     }
 
-    update() {
+    update(time, delta) {
         if(cursors.left.isDown || this.aKey.isDown) {
+            if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
             my.sprite.player.setAccelerationX(-this.ACCELERATION);
             my.sprite.player.resetFlip();
             my.sprite.player.anims.play('walk', true);
@@ -103,6 +105,7 @@ class Platformer extends Phaser.Scene {
             }
             
         } else if(cursors.right.isDown || this.dKey.isDown) {
+            if (my.sprite.player.body.velocity.x < 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
             my.sprite.player.setAccelerationX(this.ACCELERATION);
             my.sprite.player.setFlip(true, false);
             my.sprite.player.anims.play('walk', true);
@@ -124,13 +127,53 @@ class Platformer extends Phaser.Scene {
             my.vfx.walking.stop();
         }
 
+        // Track how many consecutive frames the player is grounded
+        if (my.sprite.player.body.blocked.down) {
+            this.coyoteTime = this.COYOTE_DURATION;
+            this.hasJumped = false;
+        } else {
+            this.groundedFrames = 0;
+            this.coyoteTime -= delta;
+        }
+
+        if (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey)) this.jumpBufferRemaining = this.JUMP_BUFFER_DURATION;
+        else this.jumpBufferRemaining -= delta; // decrement jump buffer time
+
         // player jump
         // note that we need body.blocked rather than body.touching b/c the former applies to tilemap tiles and the latter to the "ground"
         if(!my.sprite.player.body.blocked.down) {
             my.sprite.player.anims.play('jump');
         }
-        if(my.sprite.player.body.blocked.down && (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
+        if(this.coyoteTime > 0 && this.jumpBufferRemaining > 0 && !this.hasJumped) {
+            this.hasJumped = true; // set jump flag to true
+            this.coyoteTime = 0; // reset coyote time
+            this.jumpBufferRemaining = 0; // reset jump buffer time
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
+        }
+
+        // Cut jump short if player releases key while still rising
+        if (my.sprite.player.body.velocity.y < 0 && !(cursors.up.isDown || this.spaceKey.isDown)) {
+            // Cut the jump
+            my.sprite.player.setVelocityY(Math.max(my.sprite.player.body.velocity.y, this.JUMP_CUTOFF_VELOCITY));
+        }
+
+        // If below world
+        if(my.sprite.player.y > this.scale.height) {
+            my.sprite.player.setPosition(this.lastSafePosition[0], this.lastSafePosition[1]); // respawn at spawn point
+            my.sprite.player.setVelocity(0, 0); // reset velocity
+            my.sprite.player.setAcceleration(0, 0); // reset acceleration
+            my.sprite.player.setDrag(0, 0); // reset drag
+        }
+
+        const player = my.sprite.player;
+
+        if (player.body.blocked.down) {
+            const tile = this.groundLayer.getTileAtWorldXY(my.sprite.player.x, my.sprite.player.y + my.sprite.player.height / 2);
+            //console.log(tile.properties);
+            if (tile && tile.properties.safeGround) {
+                this.lastSafePosition = [my.sprite.player.x, my.sprite.player.y];
+                //console.log("Safe spawn point updated to: ", this.lastSafePosition);
+            }
         }
     }
 
@@ -139,9 +182,9 @@ class Platformer extends Phaser.Scene {
         let playerScore = this.registry.get('playerScore') || 0;
         this.registry.set('playerScore', playerScore);
         
-        let xPos = 865;
+        let xPos = 1175;
         let yPos = 480;
-        let fontSize = 24;
+        let fontSize = 20;
         // Add score text
         this.displayScore = this.add.bitmapText(xPos, yPos, 'myFont', 'Score: ' + this.registry.get('playerScore'), fontSize);
         this.displayScore.setScrollFactor(0); // Make it not scroll with the camera
@@ -168,7 +211,9 @@ class Platformer extends Phaser.Scene {
         // Display "Game Over" text
         this.gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2 - 50, "Game over", {
             fontSize: "32px",
-            color: "#ffffff"
+            color: "#ffffff",
+            stroke: "#000000",
+            strokeThickness: 5
         }).setOrigin(0.5);
         this.gameOverText.setVisible(false); // Hide the text initially
         this.gameOverText.setScrollFactor(0); // Make it not scroll with the camera
