@@ -11,8 +11,12 @@ class Platformer extends Phaser.Scene {
         this.JUMP_VELOCITY = -500;
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
+
         this.isGameOver = false;
         this.spawnPoint = [26, 245]; // default spawn point
+        this.coyoteTime = 0;
+        this.COYOTE_DURATION = 100; // milliseconds of grace period
+
     }
 
     create() {
@@ -83,7 +87,7 @@ class Platformer extends Phaser.Scene {
         my.vfx.walking.stop();
     }
 
-    update() {
+    update(delta) {
         if(cursors.left.isDown || this.aKey.isDown) {
             if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
             my.sprite.player.setAccelerationX(-this.ACCELERATION);
@@ -120,12 +124,16 @@ class Platformer extends Phaser.Scene {
             my.vfx.walking.stop();
         }
 
+        if (!my.sprite.player.body.blocked.down) this.coyoteTime -= delta / 10000; // decrement coyote time
+        else this.coyoteTime = this.COYOTE_DURATION; // reset coyote time
+
         // player jump
         // note that we need body.blocked rather than body.touching b/c the former applies to tilemap tiles and the latter to the "ground"
         if(!my.sprite.player.body.blocked.down) {
             my.sprite.player.anims.play('jump');
         }
-        if(my.sprite.player.body.blocked.down && (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
+        if((this.coyoteTime > 0) && (Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
+            this.coyoteTime = 0; // reset coyote time
             my.sprite.player.body.setVelocityY(this.JUMP_VELOCITY);
         }
 
