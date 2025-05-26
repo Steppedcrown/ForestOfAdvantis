@@ -174,6 +174,12 @@ class Platformer extends Phaser.Scene {
         this.input.keyboard.on('keydown-P', (event) => {
             localStorage.setItem('highScore', 0);
         }, this);
+
+        // Start background music
+        this.sound.play('bgMusic', {
+            volume: 0.4,
+            loop: true
+        });
     }
 
     update(time, delta) {
@@ -577,6 +583,7 @@ class Platformer extends Phaser.Scene {
             this.displayHighScore.setText('High: ' + parseInt(localStorage.getItem('highScore')));
         }
 
+        this.sound.stopByKey('bgMusic'); // Stop background music
         this.registry.set('playerScore', 0);
         this.scene.stop("level1");
         this.scene.start("level1");
