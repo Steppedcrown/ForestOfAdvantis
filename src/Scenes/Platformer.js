@@ -17,6 +17,7 @@ class Platformer extends Phaser.Scene {
         this.wasGrounded = false;
         this.inputLocked = false;
         this.spawnPoint = [75, 245]; // default spawn point
+        //this.spawnPoint = [1200, 0]; // end spawn point
         this.coyoteTime = 0;
         this.COYOTE_DURATION = 100; // milliseconds of grace period
         this.jumpBufferRemaining = 0;
@@ -174,6 +175,11 @@ class Platformer extends Phaser.Scene {
         my.vfx.collect.setDepth(10); // Ensure it appears behind the player
         my.vfx.collect.stop();
 
+        // Bubbles
+        this.createBubbles(150, 240, 315, 375);
+        this.createBubbles(1050, 1270, 370, 375);
+        this.createBubbles(1275, 1375, 305, 375);
+
         // Reset browser cache
         this.input.keyboard.on('keydown-P', (event) => {
             localStorage.setItem('highScore', 0);
@@ -181,7 +187,6 @@ class Platformer extends Phaser.Scene {
 
         // Start background music
         let bgMusic = this.registry.get('bgMusic') || false;
-        console.log("Background music is set to: ", bgMusic);
         this.registry.set('bgMusic', bgMusic); // Set if music is playing
         if (!bgMusic) {
             this.backgroundMusic.play();
@@ -559,6 +564,25 @@ class Platformer extends Phaser.Scene {
             });
         });
 
+    }
+    
+    createBubbles(minX, maxX, minY, maxY) {
+            my.vfx.bubbles = this.add.particles(0, 0, 'kenny-particles', {
+            frame: 'light_02.png',
+            x: { min: minX, max: maxX },
+            y: { min: minY, max: maxY },
+            lifespan: { min: 1000, max: 1500 },
+            speedY: { min: -30, max: -60 },   // Float upward
+            gravityY: 0,                      // Optional: override global gravity
+            scale: { start: 0.03, end: 0.008 }, // Shrink as it rises
+            alpha: { start: 1, end: 1 },      // Fade out
+            quantity: 2,
+            frequency: 75,                   // How often to spawn bubbles
+            angle: { min: -5, max: 5 },  // slight drift
+            rotate: { start: 0, end: 360 }, // optional spin
+            blendMode: 'ADD',
+            duration: -1, // Loop indefinitely
+        });
     }
 
     gameOver(text="Game Over") {
