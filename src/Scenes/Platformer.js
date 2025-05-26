@@ -23,6 +23,9 @@ class Platformer extends Phaser.Scene {
         this.JUMP_BUFFER_DURATION = 100; // milliseconds to buffer a jump input
         this.JUMP_CUTOFF_VELOCITY = -200;  // Control how "short" a short hop is
         this.UI_DEPTH = 99; // UI depth for buttons and text
+        this.walkStepCooldown = 0;
+        this.STEP_INTERVAL = 200; // ms between steps
+
     }
 
     preload() {
@@ -94,11 +97,25 @@ class Platformer extends Phaser.Scene {
         this.addObjects();
 
         // Store audio
-        this.walkSound = this.sound.add('walkSound'); 
-        this.jumpSound = this.sound.add('jumpSound');
-        this.coinSound = this.sound.add('coinSound');
-        this.diamondSound = this.sound.add('diamondSound');
-        this.levelCompleteSound = this.sound.add('levelCompleteSound');
+        this.walkSound = this.sound.add('walkSound', {
+            loop: true
+        }); 
+        this.jumpSound = this.sound.add('jumpSound', {
+            volume: 0.25,
+            loop: false
+        });
+        this.coinSound = this.sound.add('coinSound', {
+            volume: 0.5,
+            loop: false
+        });
+        this.diamondSound = this.sound.add('diamondSound', {
+            volume: 0.5,
+            loop: false
+        });
+        this.levelCompleteSound = this.sound.add('levelCompleteSound', {
+            volume: 0.5,
+            loop: false
+        });
 
         // Input handling
         cursors = this.input.keyboard.createCursorKeys();
@@ -160,6 +177,9 @@ class Platformer extends Phaser.Scene {
     }
 
     update(time, delta) {
+        const groundedNow = my.sprite.player.body.blocked.down;
+        let isWalking = false;
+
         if (!this.inputLocked) {
             if(cursors.left.isDown || this.aKey.isDown) {
                 if (my.sprite.player.body.velocity.x > 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
@@ -173,9 +193,8 @@ class Platformer extends Phaser.Scene {
                 if (my.sprite.player.body.blocked.down) {
                     my.vfx.walking.start();
                 } 
+                isWalking = true;
 
-                // Walking sound
-                if (!this.walkSound.isPlaying) this.walkSound.play({ loop: true });
             } else if(cursors.right.isDown || this.dKey.isDown) {
                 if (my.sprite.player.body.velocity.x < 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
                 my.sprite.player.setAccelerationX(this.ACCELERATION);
@@ -188,9 +207,8 @@ class Platformer extends Phaser.Scene {
                 if (my.sprite.player.body.blocked.down) {
                     my.vfx.walking.start();
                 }
+                isWalking = true;
 
-                // Walking sound
-                if (!this.walkSound.isPlaying) this.walkSound.play({ loop: true });
             } else {
                 // Set acceleration to 0 and have DRAG take over
                 my.sprite.player.setAccelerationX(0);
@@ -198,7 +216,6 @@ class Platformer extends Phaser.Scene {
                 //my.sprite.player.setVelocityX(0); // stop horizontal movement
                 my.sprite.player.anims.play('idle');
                 my.vfx.walking.stop();
-                if (this.walkSound.isPlaying) this.walkSound.stop();
             } 
         } else {
             // Set acceleration to 0 and have DRAG take over
@@ -207,10 +224,30 @@ class Platformer extends Phaser.Scene {
             //my.sprite.player.setVelocityX(0); // stop horizontal movement
             my.sprite.player.anims.play('idle');
             my.vfx.walking.stop();
-            if (this.walkSound.isPlaying) this.walkSound.stop();
         }
 
-        const groundedNow = my.sprite.player.body.blocked.down;
+        this.walkStepCooldown -= delta;
+        if (isWalking && groundedNow) {
+            if (this.walkStepCooldown <= 0) {
+                // Reset cooldown
+                this.walkStepCooldown = this.STEP_INTERVAL;
+
+                // Restart sound
+                this.walkSound.stop(); // reset if already playing
+                this.walkSound.play();
+
+                // Reset volume to 0 and tween it in and out
+                this.walkSound.setVolume(0.35);
+
+                this.tweens.add({
+                    targets: this.walkSound,
+                    volume: 0,
+                    duration: 300,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        }
+
         if (groundedNow && !this.wasGrounded) {
             // Trigger landing VFX only on landing
             my.vfx.landing.x = my.sprite.player.x;
@@ -221,7 +258,7 @@ class Platformer extends Phaser.Scene {
             });
 
             // Play landing sound
-            if (!this.jumpSound.isPlaying) this.jumpSound.play();
+            //this.jumpSound.play();
         }
 
         // Update for next frame
@@ -259,7 +296,7 @@ class Platformer extends Phaser.Scene {
             });
 
             // Play jump sound
-            if (!this.jumpSound.isPlaying) this.jumpSound.play();
+            this.jumpSound.play();
         }
 
         // Cut jump short if player releases key while still rising
@@ -467,6 +504,9 @@ class Platformer extends Phaser.Scene {
         this.restartButton.setVisible(true); // Show the button
         this.restartButton.setInteractive(true); // Enable interaction
         this.inputLocked = true;
+
+        // Play level complete sound
+        if (!this.levelCompleteSound.isPlaying) this.levelCompleteSound.play();
     }
 
     restartGame() {
