@@ -111,6 +111,10 @@ class Platformer extends Phaser.Scene {
             volume: 0.5,
             loop: false
         });
+        this.backgroundMusic = this.sound.add('bgMusic', {
+            volume: 0.4,
+            loop: true
+        });
 
         // Input handling
         cursors = this.input.keyboard.createCursorKeys();
@@ -180,10 +184,7 @@ class Platformer extends Phaser.Scene {
         console.log("Background music is set to: ", bgMusic);
         this.registry.set('bgMusic', bgMusic); // Set if music is playing
         if (!bgMusic) {
-            this.sound.play('bgMusic', {
-                volume: 0.4,
-                loop: true
-            });
+            this.backgroundMusic.play();
             this.registry.set('bgMusic', true); // Set music is playing
         }
     }
@@ -571,6 +572,7 @@ class Platformer extends Phaser.Scene {
         this.inputLocked = true;
 
         // Play level complete sound
+        this.backgroundMusic.setVolume(0.1); // Lower volume
         if (!this.levelCompleteSound.isPlaying) this.levelCompleteSound.play();
     }
 
@@ -590,6 +592,8 @@ class Platformer extends Phaser.Scene {
         }
 
         this.registry.set('playerScore', 0);
+        this.levelCompleteSound.stop(); // Stop level complete sound
+        this.backgroundMusic.setVolume(0.4); // Reset background music volume
         this.scene.stop("level1");
         this.scene.start("level1");
     }
