@@ -104,14 +104,6 @@ class Platformer extends Phaser.Scene {
             volume: 0.25,
             loop: false
         });
-        this.coinSound = this.sound.add('coinSound', {
-            volume: 0.5,
-            loop: false
-        });
-        this.diamondSound = this.sound.add('diamondSound', {
-            volume: 0.5,
-            loop: false
-        });
         this.levelCompleteSound = this.sound.add('levelCompleteSound', {
             volume: 0.5,
             loop: false
@@ -433,8 +425,13 @@ class Platformer extends Phaser.Scene {
         // TODO: Add coin collision handler
         // Handle collision detection with coins
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (player, coin) => {
+            coin.body.enable = false;
+
             // Play coin sound
-            if (!this.coinSound.isPlaying) this.coinSound.play();
+            this.sound.play('coinSound', {
+                volume: 0.5,
+                loop: false
+            });
 
             // Tween coin to disappear
             this.tweens.add({
@@ -448,8 +445,13 @@ class Platformer extends Phaser.Scene {
             this.updateScore(1); // increment score
         });
         this.physics.add.overlap(my.sprite.player, this.diamondGroup, (player, diamond) => {
-            // Play coin sound
-            if (!this.diamondSound.isPlaying) this.diamondSound.play();
+            diamond.body.enable = false;
+
+            // Play diamond sound
+            this.sound.play('diamondSound', {
+                volume: 0.5,
+                loop: false
+            });
 
             // Tween diamond to disappear
             this.tweens.killTweensOf(diamond);  // Cancel bob
