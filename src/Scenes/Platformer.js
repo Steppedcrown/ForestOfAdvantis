@@ -11,11 +11,13 @@ class Platformer extends Phaser.Scene {
         this.JUMP_VELOCITY = -500;
         this.PARTICLE_VELOCITY = 50;
         this.SCALE = 2.0;
+        this.MAX_VELOCITY = 300; // max speed
 
         this.isGameOver = false;
         this.wasGrounded = false;
         this.inputLocked = false;
         this.spawnPoint = [75, 245]; // default spawn point
+        //this.spawnPoint = [1200, 0]; // end spawn point
         this.coyoteTime = 0;
         this.COYOTE_DURATION = 100; // milliseconds of grace period
         this.jumpBufferRemaining = 0;
@@ -64,9 +66,11 @@ class Platformer extends Phaser.Scene {
         // set up player avatar
         my.sprite.player = this.physics.add.sprite(this.spawnPoint[0], this.spawnPoint[1], "platformer_characters", "tile_0000.png");
         my.sprite.player.setFlip(true, false); // face right
-        my.sprite.player.setMaxVelocity(300, 1500); // max speed
+        my.sprite.player.setMaxVelocity(this.MAX_VELOCITY, 1500); // max speed
         my.sprite.player.body.setSize(14, 16).setOffset(6, 6);
         my.sprite.player.setDepth(1);
+        my.sprite.player.setOrigin(0.5, 1); // Origin to center bottom
+
 
         // Bounds
         this.physics.world.setBounds(0, -0, this.map.widthInPixels, this.map.heightInPixels);
@@ -108,6 +112,10 @@ class Platformer extends Phaser.Scene {
             volume: 0.5,
             loop: false
         });
+        this.backgroundMusic = this.sound.add('bgMusic', {
+            volume: 0.4,
+            loop: true
+        });
 
         // Input handling
         cursors = this.input.keyboard.createCursorKeys();
@@ -124,7 +132,7 @@ class Platformer extends Phaser.Scene {
             lifespan: 250,
             gravityY: -50,
             duration: 500,
-            alpha: {start: 1, end: 0.1}, 
+            alpha: {start: 1, end: 0.25}, 
         });
         my.vfx.walking.stop();
 
@@ -136,7 +144,7 @@ class Platformer extends Phaser.Scene {
             lifespan: 200,
             gravityY: -50,
             duration: 1,
-            alpha: {start: 0.8, end: 0.25}
+            alpha: {start: 1, end: 0.4}
         });
         my.vfx.jumping.setDepth(2); // Ensure it appears above the player
         my.vfx.jumping.stop();
@@ -149,7 +157,7 @@ class Platformer extends Phaser.Scene {
             lifespan: 200,
             gravityY: -50,
             duration: 1,
-            alpha: {start: 0.8, end: 0.25}
+            alpha: {start: 1, end: 0.4}
         });
         my.vfx.landing.setDepth(2); // Ensure it appears above the player
         my.vfx.landing.stop();
@@ -166,6 +174,24 @@ class Platformer extends Phaser.Scene {
         });
         my.vfx.collect.setDepth(10); // Ensure it appears behind the player
         my.vfx.collect.stop();
+
+        // Bubbles
+        this.createBubbles(150, 240, 315, 375);
+        this.createBubbles(1050, 1270, 370, 375);
+        this.createBubbles(1275, 1375, 305, 375);
+
+        // Reset browser cache
+        this.input.keyboard.on('keydown-P', (event) => {
+            localStorage.setItem('highScore', 0);
+        }, this);
+
+        // Start background music
+        let bgMusic = this.registry.get('bgMusic') || false;
+        this.registry.set('bgMusic', bgMusic); // Set if music is playing
+        if (!bgMusic) {
+            this.backgroundMusic.play();
+            this.registry.set('bgMusic', true); // Set music is playing
+        }
     }
 
     update(time, delta) {
@@ -179,7 +205,7 @@ class Platformer extends Phaser.Scene {
                 my.sprite.player.resetFlip();
                 my.sprite.player.anims.play('walk', true);
                 // Particle following
-                my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
+                my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-15, false);
                 my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
                 // Only play smoke effect if touching the ground
                 if (my.sprite.player.body.blocked.down) {
@@ -193,7 +219,7 @@ class Platformer extends Phaser.Scene {
                 my.sprite.player.setFlip(true, false);
                 my.sprite.player.anims.play('walk', true);
                 // Particle following
-                my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
+                my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-15, false);
                 my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
                 // Only play smoke effect if touching the ground
                 if (my.sprite.player.body.blocked.down) {
@@ -218,6 +244,7 @@ class Platformer extends Phaser.Scene {
             my.vfx.walking.stop();
         }
 
+        // Movement sfx
         this.walkStepCooldown -= delta;
         if (isWalking && groundedNow) {
             if (this.walkStepCooldown <= 0) {
@@ -240,10 +267,24 @@ class Platformer extends Phaser.Scene {
             }
         }
 
+        // Lean affect
+        const velocityX = my.sprite.player.body.velocity.x;
+        const maxLeanAngle = 10; // degrees to lean at full speed
+        const maxSquash = 0.9;   // horizontal squash factor
+
+        // Normalize velocity to [-1, 1] based on max speed
+        const speedRatio = Phaser.Math.Clamp(velocityX / this.MAX_VELOCITY, -1, 1);
+
+        // Lean the player
+        my.sprite.player.setRotation(Phaser.Math.DegToRad(maxLeanAngle * speedRatio));
+
+        // Slight horizontal squash (increase scaleX when leaning)
+        my.sprite.player.setScale(1 - Math.abs(speedRatio) * (1 - maxSquash), my.sprite.player.scaleY); 
+
         if (groundedNow && !this.wasGrounded) {
             // Trigger landing VFX only on landing
             my.vfx.landing.x = my.sprite.player.x;
-            my.vfx.landing.y = my.sprite.player.y + my.sprite.player.displayHeight - 5;
+            my.vfx.landing.y = my.sprite.player.y + my.sprite.player.displayHeight - 20;
             my.vfx.landing.start();
             this.time.delayedCall(10, () => {
                 my.vfx.landing.stop(); // stop the jump vfx
@@ -251,6 +292,17 @@ class Platformer extends Phaser.Scene {
 
             // Play landing sound
             //this.jumpSound.play();
+
+            // Stretch and squash effect
+            my.sprite.player.setScale(0.8, 1.2);  // squash down
+
+            this.tweens.add({
+                targets: my.sprite.player,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 200,
+                ease: 'Bounce.easeOut'
+            });
         }
 
         // Update for next frame
@@ -281,7 +333,7 @@ class Platformer extends Phaser.Scene {
 
             // Play jump vfx
             my.vfx.jumping.x = my.sprite.player.x; // center the particle on the player
-            my.vfx.jumping.y = my.sprite.player.y + my.sprite.player.displayHeight / 2 - 5; // center the particle on the player
+            my.vfx.jumping.y = my.sprite.player.y + my.sprite.player.displayHeight - 20; // center the particle on the player
             my.vfx.jumping.start();
             this.time.delayedCall(10, () => {
                 my.vfx.jumping.stop(); // stop the jump vfx
@@ -289,6 +341,18 @@ class Platformer extends Phaser.Scene {
 
             // Play jump sound
             this.jumpSound.play();
+
+            // Stretch and squash effect
+            my.sprite.player.setScale(1.2, 0.8);  // stretch up, squash wide
+
+            this.tweens.add({
+                targets: my.sprite.player,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 200,
+                ease: 'Sine.easeOut'
+            });
+
         }
 
         // Cut jump short if player releases key while still rising
@@ -372,8 +436,13 @@ class Platformer extends Phaser.Scene {
             color: "#000000",
             padding: { x: 20, y: 10 } // Add padding around the text
         })
-        .setInteractive()
+        .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
+            // Play click sound
+            this.sound.play('uiClick', {
+                volume: 0.5,
+                loop: false
+            });
             this.restartGame();
         });
         this.restartButton.setOrigin(0.5, 0.5);
@@ -496,6 +565,25 @@ class Platformer extends Phaser.Scene {
         });
 
     }
+    
+    createBubbles(minX, maxX, minY, maxY) {
+            my.vfx.bubbles = this.add.particles(0, 0, 'kenny-particles', {
+            frame: 'light_02.png',
+            x: { min: minX, max: maxX },
+            y: { min: minY, max: maxY },
+            lifespan: { min: 1000, max: 1500 },
+            speedY: { min: -30, max: -60 },   // Float upward
+            gravityY: 0,                      // Optional: override global gravity
+            scale: { start: 0.03, end: 0.008 }, // Shrink as it rises
+            alpha: { start: 1, end: 1 },      // Fade out
+            quantity: 2,
+            frequency: 75,                   // How often to spawn bubbles
+            angle: { min: -5, max: 5 },  // slight drift
+            rotate: { start: 0, end: 360 }, // optional spin
+            blendMode: 'ADD',
+            duration: -1, // Loop indefinitely
+        });
+    }
 
     gameOver(text="Game Over") {
         this.buttonRect.setVisible(true); // Show the overlay
@@ -508,6 +596,7 @@ class Platformer extends Phaser.Scene {
         this.inputLocked = true;
 
         // Play level complete sound
+        this.backgroundMusic.setVolume(0.1); // Lower volume
         if (!this.levelCompleteSound.isPlaying) this.levelCompleteSound.play();
     }
 
@@ -527,6 +616,8 @@ class Platformer extends Phaser.Scene {
         }
 
         this.registry.set('playerScore', 0);
+        this.levelCompleteSound.stop(); // Stop level complete sound
+        this.backgroundMusic.setVolume(0.4); // Reset background music volume
         this.scene.stop("level1");
         this.scene.start("level1");
     }

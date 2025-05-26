@@ -28,6 +28,8 @@ class Load extends Phaser.Scene {
         this.load.audio('diamondSound', 'mixkit-video-game-treasure-2066.wav');
         this.load.audio('coinSound', 'coin-257878.mp3');
         this.load.audio('walkSound', 'walk-on-grass-1-291984.mp3');
+        this.load.audio('uiClick', 'mixkit-classic-click-1117.wav');
+        this.load.audio('bgMusic', 'exploration-chiptune-rpg-adventure-theme-336428.mp3');
 
         // Oooh, fancy. A multi atlas is a texture atlas which has the textures spread
         // across multiple png files, so as to keep their size small for use with
