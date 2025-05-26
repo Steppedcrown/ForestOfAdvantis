@@ -372,8 +372,13 @@ class Platformer extends Phaser.Scene {
             color: "#000000",
             padding: { x: 20, y: 10 } // Add padding around the text
         })
-        .setInteractive()
+        .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
+            // Play click sound
+            this.sound.play('uiClick', {
+                volume: 0.5,
+                loop: false
+            });
             this.restartGame();
         });
         this.restartButton.setOrigin(0.5, 0.5);
