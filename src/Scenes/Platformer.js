@@ -93,6 +93,13 @@ class Platformer extends Phaser.Scene {
         this.setupScore();
         this.addObjects();
 
+        // Store audio
+        this.walkSound = this.sound.add('walkSound'); 
+        this.jumpSound = this.sound.add('jumpSound');
+        this.coinSound = this.sound.add('coinSound');
+        this.diamondSound = this.sound.add('diamondSound');
+        this.levelCompleteSound = this.sound.add('levelCompleteSound');
+
         // Input handling
         cursors = this.input.keyboard.createCursorKeys();
         this.dKey = this.input.keyboard.addKey('D');
@@ -138,17 +145,17 @@ class Platformer extends Phaser.Scene {
         my.vfx.landing.setDepth(2); // Ensure it appears above the player
         my.vfx.landing.stop();
 
-        // collect vfx
+        // Collect vfx
         my.vfx.collect = this.add.particles(0, 0, "kenny-particles", {
-            frame: ['smoke_10.png'],
+            frame: ['star_08.png'],
             scale: {start: 0.03, end: 0.06},
             maxAliveParticles: 1,
-            lifespan: 200,
+            lifespan: 1000,
             gravityY: -50,
             duration: 1,
             alpha: {start: 0.8, end: 0.25}
         });
-        my.vfx.collect.setDepth(-10); // Ensure it appears behind the player
+        my.vfx.collect.setDepth(10); // Ensure it appears behind the player
         my.vfx.collect.stop();
     }
 
@@ -159,33 +166,39 @@ class Platformer extends Phaser.Scene {
                 my.sprite.player.setAccelerationX(-this.ACCELERATION);
                 my.sprite.player.resetFlip();
                 my.sprite.player.anims.play('walk', true);
-                // TODO: add particle following code here
+                // Particle following
                 my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
                 my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
                 // Only play smoke effect if touching the ground
                 if (my.sprite.player.body.blocked.down) {
                     my.vfx.walking.start();
                 } 
+
+                // Walking sound
+                if (!this.walkSound.isPlaying) this.walkSound.play({ loop: true });
             } else if(cursors.right.isDown || this.dKey.isDown) {
                 if (my.sprite.player.body.velocity.x < 0) my.sprite.player.setVelocityX(my.sprite.player.body.velocity.x / 4);
                 my.sprite.player.setAccelerationX(this.ACCELERATION);
                 my.sprite.player.setFlip(true, false);
                 my.sprite.player.anims.play('walk', true);
-                // TODO: add particle following code here
+                // Particle following
                 my.vfx.walking.startFollow(my.sprite.player, my.sprite.player.displayWidth/2-10, my.sprite.player.displayHeight/2-5, false);
                 my.vfx.walking.setParticleSpeed(this.PARTICLE_VELOCITY, 0);
                 // Only play smoke effect if touching the ground
                 if (my.sprite.player.body.blocked.down) {
                     my.vfx.walking.start();
                 }
+
+                // Walking sound
+                if (!this.walkSound.isPlaying) this.walkSound.play({ loop: true });
             } else {
                 // Set acceleration to 0 and have DRAG take over
                 my.sprite.player.setAccelerationX(0);
                 my.sprite.player.setDragX(this.DRAG);
                 //my.sprite.player.setVelocityX(0); // stop horizontal movement
                 my.sprite.player.anims.play('idle');
-                // TODO: have the vfx stop playing
                 my.vfx.walking.stop();
+                if (this.walkSound.isPlaying) this.walkSound.stop();
             } 
         } else {
             // Set acceleration to 0 and have DRAG take over
@@ -193,8 +206,8 @@ class Platformer extends Phaser.Scene {
             my.sprite.player.setDragX(this.DRAG);
             //my.sprite.player.setVelocityX(0); // stop horizontal movement
             my.sprite.player.anims.play('idle');
-            // TODO: have the vfx stop playing
             my.vfx.walking.stop();
+            if (this.walkSound.isPlaying) this.walkSound.stop();
         }
 
         const groundedNow = my.sprite.player.body.blocked.down;
@@ -206,7 +219,11 @@ class Platformer extends Phaser.Scene {
             this.time.delayedCall(10, () => {
                 my.vfx.landing.stop(); // stop the jump vfx
             });
+
+            // Play landing sound
+            if (!this.jumpSound.isPlaying) this.jumpSound.play();
         }
+
         // Update for next frame
         this.wasGrounded = groundedNow;
 
@@ -240,6 +257,9 @@ class Platformer extends Phaser.Scene {
             this.time.delayedCall(10, () => {
                 my.vfx.jumping.stop(); // stop the jump vfx
             });
+
+            // Play jump sound
+            if (!this.jumpSound.isPlaying) this.jumpSound.play();
         }
 
         // Cut jump short if player releases key while still rising
@@ -376,6 +396,10 @@ class Platformer extends Phaser.Scene {
         // TODO: Add coin collision handler
         // Handle collision detection with coins
         this.physics.add.overlap(my.sprite.player, this.coinGroup, (player, coin) => {
+            // Play coin sound
+            if (!this.coinSound.isPlaying) this.coinSound.play();
+
+            // Tween coin to disappear
             this.tweens.add({
                 targets: coin,
                 y: coin.y - 15,
@@ -387,6 +411,10 @@ class Platformer extends Phaser.Scene {
             this.updateScore(1); // increment score
         });
         this.physics.add.overlap(my.sprite.player, this.diamondGroup, (player, diamond) => {
+            // Play coin sound
+            if (!this.diamondSound.isPlaying) this.diamondSound.play();
+
+            // Tween diamond to disappear
             this.tweens.killTweensOf(diamond);  // Cancel bob
             this.tweens.add({
                 targets: diamond,
