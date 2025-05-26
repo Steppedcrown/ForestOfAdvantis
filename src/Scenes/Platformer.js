@@ -176,10 +176,16 @@ class Platformer extends Phaser.Scene {
         }, this);
 
         // Start background music
-        this.sound.play('bgMusic', {
-            volume: 0.4,
-            loop: true
-        });
+        let bgMusic = this.registry.get('bgMusic') || false;
+        console.log("Background music is set to: ", bgMusic);
+        this.registry.set('bgMusic', bgMusic); // Set if music is playing
+        if (!bgMusic) {
+            this.sound.play('bgMusic', {
+                volume: 0.4,
+                loop: true
+            });
+            this.registry.set('bgMusic', true); // Set music is playing
+        }
     }
 
     update(time, delta) {
@@ -583,7 +589,6 @@ class Platformer extends Phaser.Scene {
             this.displayHighScore.setText('High: ' + parseInt(localStorage.getItem('highScore')));
         }
 
-        this.sound.stopByKey('bgMusic'); // Stop background music
         this.registry.set('playerScore', 0);
         this.scene.stop("level1");
         this.scene.start("level1");
